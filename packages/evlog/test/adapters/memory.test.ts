@@ -103,6 +103,30 @@ describe('createMemoryDrain', () => {
     expect(readMemoryLogs()).toHaveLength(0)
   })
 
+  it('resolves store and maxEvents from environment variables', async () => {
+    const origStore = process.env.EVLOG_MEMORY_STORE
+    const origMaxEvents = process.env.EVLOG_MEMORY_MAX_EVENTS
+
+    try {
+      process.env.EVLOG_MEMORY_STORE = 'env-store'
+      process.env.EVLOG_MEMORY_MAX_EVENTS = '2'
+      clearMemoryLogs('env-store')
+
+      const drain = createMemoryDrain()
+      for (let i = 1; i <= 3; i++) {
+        await drain({ event: createTestEvent({ requestId: String(i) }), request: { method: 'GET', path: '/', requestId: String(i) }, headers: {} })
+      }
+
+      expect(readMemoryLogs({ store: 'env-store' }).map(e => e.requestId)).toEqual(['2', '3'])
+    } finally {
+      if (origStore === undefined) delete process.env.EVLOG_MEMORY_STORE
+      else process.env.EVLOG_MEMORY_STORE = origStore
+      if (origMaxEvents === undefined) delete process.env.EVLOG_MEMORY_MAX_EVENTS
+      else process.env.EVLOG_MEMORY_MAX_EVENTS = origMaxEvents
+      clearMemoryLogs('env-store')
+    }
+  })
+
   it('multiple drains sharing the same store key see each other\'s events', async () => {
     const drainA = createMemoryDrain({ store: 'a' })
     const drainB = createMemoryDrain({ store: 'a' })
