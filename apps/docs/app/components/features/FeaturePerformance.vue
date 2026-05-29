@@ -150,7 +150,7 @@ onBeforeUnmount(() => {
                 type="button"
                 class="font-mono text-[10px] px-2 py-0.5 border transition-all duration-300 outline-none cursor-pointer"
                 :class="activeBench === idx
-                  ? 'border-primary/30 bg-primary/10 text-blue-400'
+                  ? 'border-primary/30 bg-primary/10 text-highlighted'
                   : 'border-transparent text-muted hover:text-highlighted'"
                 :aria-label="`${label} benchmark`"
                 :aria-pressed="activeBench === idx"
@@ -346,7 +346,7 @@ onBeforeUnmount(() => {
                 </p>
               </div>
               <div class="text-right">
-                <p class="font-mono text-xl font-medium text-blue-400 tabular-nums">
+                <p class="font-mono text-xl font-medium text-highlighted tabular-nums">
                   ~3µs
                 </p>
                 <p class="font-mono text-[10px] text-dimmed">
