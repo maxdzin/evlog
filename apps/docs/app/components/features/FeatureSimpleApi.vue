@@ -52,7 +52,7 @@ function setOutput(type: 'success' | 'error') {
 </script>
 
 <template>
-  <section class="py-24 md:py-32">
+  <section class="pt-16 md:pt-20 pb-24 md:pb-32">
     <Motion
       :initial="prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 20 }"
       :while-in-view="{ opacity: 1, y: 0 }"

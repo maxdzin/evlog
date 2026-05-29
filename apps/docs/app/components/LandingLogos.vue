@@ -14,12 +14,6 @@ const logos: LogoItem[] = [
   { name: 'INTH', href: 'https://inth.com/', icon: 'i-custom:inth', wordmarkClass: 'h-10 w-[7.8rem] shrink-0' },
   { name: 'Databuddy', href: 'https://www.databuddy.cc', icon: 'i-custom:databuddy', wordmarkClass: 'h-10 w-[10.6rem] shrink-0' },
 ]
-
-const prefersReducedMotion = ref(false)
-
-onMounted(() => {
-  prefersReducedMotion.value = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-})
 </script>
 
 <template>
@@ -41,8 +35,7 @@ onMounted(() => {
     </p>
 
     <div
-      v-if="prefersReducedMotion"
-      class="relative z-0 mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-14 gap-y-8 px-8"
+      class="relative z-0 mx-auto grid max-w-4xl grid-cols-3 gap-x-6 gap-y-10 px-6 sm:gap-x-10 sm:px-8 place-items-center"
     >
       <LandingLogoLink
         v-for="logo in logos"
@@ -50,21 +43,5 @@ onMounted(() => {
         v-bind="logo"
       />
     </div>
-
-    <UMarquee
-      v-else
-      pause-on-hover
-      :overlay="true"
-      :ui="{
-        root: 'relative z-0 [--gap:--spacing(16)] sm:[--gap:--spacing(24)] [--duration:36s] py-3',
-        content: 'items-center',
-      }"
-    >
-      <LandingLogoLink
-        v-for="logo in logos"
-        :key="logo.name"
-        v-bind="logo"
-      />
-    </UMarquee>
   </section>
 </template>
