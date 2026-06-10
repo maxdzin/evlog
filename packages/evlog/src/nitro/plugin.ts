@@ -4,13 +4,14 @@
 // (nitropack dev loads plugins outside the bundle via Worker threads).
 import { defineNitroPlugin } from 'nitropack/runtime/internal/plugin'
 import { getHeaders } from 'h3'
-import { createRequestLogger, getGlobalPluginRunner, initLogger, isEnabled } from '../logger'
+import { createRequestLogger, getGlobalPluginRunner, initLogger, isEnabled, markWideEventDrainStarted } from '../logger'
 import { registerPrettyErrorSnippetReader } from '../shared/pretty-error'
 import { readCodeSnippetFromDisk } from '../shared/pretty-error-snippet.node'
 import { enrichErrorStackForDev } from '../shared/enrich-error-stack.node'
 import { shouldLog, getServiceForPath, extractErrorStatus } from '../nitro'
 import { normalizeRedactConfig } from '../redact'
 import { resolveEvlogConfigForNitroPlugin, setActiveNitroRuntime } from '../shared/nitroConfigBridge'
+import { bindStreamingResponseLifecycle, shouldDeferEmitForResponse } from '../shared/streamResponse'
 import { startStreamServer, type StreamServerOptions } from '../stream'
 import type { RequestLogger, ServerEvent, TailSamplingContext } from '../types'
 import { filterSafeHeaders } from '../utils'
@@ -39,6 +40,7 @@ function getResponseStatus(event: ServerEvent): number {
 
   return 200
 }
+
 
 export default defineNitroPlugin(async (nitroApp) => {
   setActiveNitroRuntime('v2')
@@ -176,7 +178,9 @@ export default defineNitroPlugin(async (nitroApp) => {
     if (e.context._evlogEmitted || e.context._evlogEmitting || !e.context._evlogShouldEmit) return
 
     const requestLog = e.context.log as RequestLogger | undefined
-    if (requestLog) {
+    if (!requestLog) return
+
+    const emitSuccessResponse = async () => {
       const status = getResponseStatus(e)
       requestLog.set({ status })
 
@@ -199,5 +203,17 @@ export default defineNitroPlugin(async (nitroApp) => {
       const emittedEvent = requestLog.emit({ _forceKeep: tailCtx.shouldKeep })
       await callEnrichAndDrain(nitroApp, emittedEvent, e)
     }
+
+    if (e.response && shouldDeferEmitForResponse(e.response)) {
+      e.response = bindStreamingResponseLifecycle(e.response, async (meta) => {
+        if (meta.error) {
+          requestLog.error(meta.error)
+        }
+        await emitSuccessResponse()
+      })
+      return
+    }
+
+    await emitSuccessResponse()
   })
 })

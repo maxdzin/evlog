@@ -2,7 +2,7 @@ import { definePlugin } from 'nitro'
 import type { CaptureError } from 'nitro/types'
 import type { HTTPEvent } from 'nitro/h3'
 import { parseURL } from 'ufo'
-import { createRequestLogger, getGlobalPluginRunner, initLogger, isEnabled } from '../logger'
+import { createRequestLogger, getGlobalPluginRunner, initLogger, isEnabled, markWideEventDrainStarted } from '../logger'
 import { registerPrettyErrorSnippetReader } from '../shared/pretty-error'
 import { readCodeSnippetFromDisk } from '../shared/pretty-error-snippet.node'
 import { enrichErrorStackForDev } from '../shared/enrich-error-stack.node'
@@ -10,6 +10,7 @@ import { shouldLog, getServiceForPath, extractErrorStatus } from '../nitro'
 import { extendDeferredDrain } from '../nitro/enrich-drain'
 import { normalizeRedactConfig } from '../redact'
 import { resolveEvlogConfigForNitroPlugin, setActiveNitroRuntime } from '../shared/nitroConfigBridge'
+import { bindStreamingResponseLifecycle, shouldDeferEmitForResponse } from '../shared/streamResponse'
 import type { EnrichContext, RequestLogger, TailSamplingContext, WideEvent } from '../types'
 import { filterSafeHeaders } from '../utils'
 
@@ -146,6 +147,8 @@ async function callEnrichAndDrain(
     await runner.runEnrich(enrichCtx)
   }
 
+  markWideEventDrainStarted(emittedEvent)
+
   await callDrainHook(hooks, emittedEvent, event, hookContext, options)
 }
 
@@ -241,29 +244,45 @@ export default definePlugin(async (nitroApp) => {
     const log = ctx?.log as RequestLogger | undefined
     if (!log || !ctx) return
 
-    const { status } = res
-    log.set({ status })
+    const emitSuccessResponse = async (responseStatus: number) => {
+      log.set({ status: responseStatus })
 
-    const startTime = ctx._evlogStartTime as number | undefined
-    const durationMs = startTime ? Date.now() - startTime : undefined
+      const startTime = ctx._evlogStartTime as number | undefined
+      const durationMs = startTime ? Date.now() - startTime : undefined
 
-    const { pathname } = parseURL(event.req.url)
+      const { pathname } = parseURL(event.req.url)
 
-    const tailCtx: TailSamplingContext = {
-      status,
-      duration: durationMs,
-      path: pathname,
-      method: event.req.method,
-      context: log.getContext(),
-      shouldKeep: false,
+      const tailCtx: TailSamplingContext = {
+        status: responseStatus,
+        duration: durationMs,
+        path: pathname,
+        method: event.req.method,
+        context: log.getContext(),
+        shouldKeep: false,
+      }
+
+      await hooks.callHook('evlog:emit:keep', tailCtx)
+      const runner = getGlobalPluginRunner()
+      if (runner.hasKeep) await runner.runKeep(tailCtx)
+
+      const emittedEvent = log.emit({ _forceKeep: tailCtx.shouldKeep })
+      await callEnrichAndDrain(hooks, emittedEvent, event, res)
     }
 
-    await hooks.callHook('evlog:emit:keep', tailCtx)
-    const runner = getGlobalPluginRunner()
-    if (runner.hasKeep) await runner.runKeep(tailCtx)
+    if (shouldDeferEmitForResponse(res)) {
+      const wrapped = bindStreamingResponseLifecycle(res, async (meta) => {
+        if (meta.error) {
+          log.error(meta.error)
+        }
+        await emitSuccessResponse(meta.status ?? res.status)
+      })
+      if (wrapped !== res && 'res' in event) {
+        (event as { res: Response }).res = wrapped
+      }
+      return
+    }
 
-    const emittedEvent = log.emit({ _forceKeep: tailCtx.shouldKeep })
-    await callEnrichAndDrain(hooks, emittedEvent, event, res)
+    await emitSuccessResponse(res.status)
   })
 
   hooks.hook('error', async (error, { event }) => {
