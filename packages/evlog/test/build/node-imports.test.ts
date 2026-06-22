@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const distDir = resolve(import.meta.dirname, '../../dist')
@@ -33,16 +33,17 @@ function collectRelativeImports(entryPath: string): string[] {
   const imports: string[] = []
   const importRe = /from\s+["'](\.[^"']+)["']/g
 
-  const walk = (relativePath: string) => {
-    const abs = resolve(distDir, relativePath)
+  const walk = (relativePath: string, fromDir = distDir) => {
+    const abs = resolve(fromDir, relativePath)
     if (seen.has(abs)) return
     seen.add(abs)
     const source = readFileSync(abs, 'utf8')
     let match: RegExpExecArray | null
+    const currentDir = dirname(abs)
     while ((match = importRe.exec(source))) {
       const next = match[1].replace(/^\.\//, '')
       imports.push(next)
-      walk(next)
+      walk(next, currentDir)
     }
   }
 
