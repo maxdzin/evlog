@@ -1,4 +1,4 @@
-import type { AuditActionDefinition, AuditActor, AuditFields, AuditTarget } from '../types'
+import type { AuditActionDefinition, AuditActor, AuditFields, AuditTarget } from './types'
 
 /**
  * Input accepted by `log.audit()`, `audit()`, and `withAudit()`.
@@ -19,7 +19,7 @@ export interface AuditInput {
   version?: number
 }
 
-/** Options for {@link defineAuditAction}. Same shape as {@link AuditCatalogEntry}. */
+/** Options for {@link defineAuditAction}. Same shape as {@link AuditActionDefinition}. */
 export type DefineAuditActionOptions = AuditActionDefinition
 
 /**

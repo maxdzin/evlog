@@ -1,5 +1,5 @@
 import type { AuditActionDefinition, AuditTarget } from './types'
-import { defineAuditAction, type AuditInput } from './shared/define-audit-action'
+import { defineAuditAction, type AuditInput } from './audit-action'
 import { EvlogError } from './error'
 
 /**

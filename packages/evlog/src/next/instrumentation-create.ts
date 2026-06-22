@@ -1,3 +1,5 @@
+import { registerPrettyErrorSnippetReader } from '../shared/pretty-error'
+import { readCodeSnippetFromDisk } from '../shared/pretty-error-snippet.node'
 import type { DrainContext, EnvironmentContext, LogLevel, Log, SamplingConfig } from '../types'
 import type {
   NextInstrumentationErrorContext,
@@ -6,14 +8,6 @@ import type {
 
 type LoggerModule = typeof import('../logger')
 type EvlogProcessOutputGlobal = import('../logger').EvlogProcessOutputGlobal
-
-function loadPrettyErrorSnippet(): Promise<void> {
-  return import('../shared/pretty-error-snippet.node.js').then(({ readCodeSnippetFromDisk }) => {
-    return import('../shared/pretty-error.js').then(({ registerPrettyErrorSnippetReader }) => {
-      registerPrettyErrorSnippetReader(readCodeSnippetFromDisk)
-    })
-  }).catch(() => undefined)
-}
 
 /** Options for capturing process stdout/stderr as structured log events. */
 export interface CaptureOutputOptions {
@@ -198,7 +192,7 @@ export function createInstrumentation(options: InstrumentationOptions = {}): Ins
     if (registered) return
     if (registerPromise) return registerPromise
 
-    registerPromise = loadLogger().then(async ({ initLogger, lockLogger, log }) => {
+    registerPromise = loadLogger().then(({ initLogger, lockLogger, log }) => {
       initLogger({
         enabled: options.enabled,
         env: {
@@ -213,7 +207,7 @@ export function createInstrumentation(options: InstrumentationOptions = {}): Ins
         drain: options.drain,
       })
       lockLogger()
-      await loadPrettyErrorSnippet()
+      registerPrettyErrorSnippetReader(readCodeSnippetFromDisk)
 
       if (captureOutputOptions && process.env.NEXT_RUNTIME === 'nodejs') {
         applyCaptureOutput(captureOutputOptions, log, options.silent ?? false)

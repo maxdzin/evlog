@@ -2,11 +2,9 @@ import type { AuditActor, AuditFields, AuditPatchOp, AuditTarget, DrainContext, 
 import { createLogger } from './logger'
 import { compileRedactPathMatchers, redactValueByPaths } from './redact'
 import { getHeader as getSharedHeader } from './shared/headers'
-import { defineAuditAction } from './shared/define-audit-action'
-import type { AuditInput, DefineAuditActionOptions, DefinedAuditAction } from './shared/define-audit-action'
+import type { AuditInput } from './audit-action'
 
-export { defineAuditAction }
-export type { AuditInput, DefineAuditActionOptions, DefinedAuditAction }
+export { defineAuditAction, type AuditInput, type DefineAuditActionOptions, type DefinedAuditAction } from './audit-action'
 
 /**
  * Current version of the audit envelope. Bumped when `AuditFields` evolves

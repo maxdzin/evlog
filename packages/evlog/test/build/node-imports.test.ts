@@ -28,21 +28,56 @@ function listDistFiles(): string[] {
   return out
 }
 
+function collectRelativeImports(entryPath: string): string[] {
+  const seen = new Set<string>()
+  const imports: string[] = []
+  const importRe = /from\s+["'](\.[^"']+)["']/g
+
+  const walk = (relativePath: string) => {
+    const abs = resolve(distDir, relativePath)
+    if (seen.has(abs)) return
+    seen.add(abs)
+    const source = readFileSync(abs, 'utf8')
+    let match: RegExpExecArray | null
+    while ((match = importRe.exec(source))) {
+      const next = match[1].replace(/^\.\//, '')
+      imports.push(next)
+      walk(next)
+    }
+  }
+
+  walk(entryPath)
+  return imports
+}
+
+function assertNoNodeBuiltins(source: string, label: string): void {
+  expect(source, label).not.toMatch(/import\s*\(\s*['"]node:(crypto|fs|path|module)['"]/)
+  expect(source, label).not.toMatch(/from\s+['"]node:(crypto|fs|path|module)['"]/)
+  expect(source, label).not.toContain('pretty-error-snippet.node')
+}
+
 describe.skipIf(!distExists)('dist node built-in imports (#387)', () => {
-  it('audit chunk does not reference node:crypto', () => {
-    const auditFile = listDistFiles().find(f => f.includes('audit') && f.endsWith('.mjs') && !f.includes('plugin'))
-    expect(auditFile, 'expected a built audit chunk').toBeDefined()
-    expect(readDist(auditFile!)).not.toContain('node:crypto')
+  it('audit graph does not import Node built-ins', () => {
+    const auditChunk = listDistFiles().find(f => /^audit-[^/]+\.mjs$/.test(f))
+    expect(auditChunk, 'expected hashed audit chunk').toBeDefined()
+    assertNoNodeBuiltins(readDist(auditChunk!), auditChunk!)
   })
 
-  it('catalog entry does not reference node: built-ins or pretty-error-snippet.node', () => {
+  it('audit-action entry stays isomorphic', () => {
+    assertNoNodeBuiltins(readDist('audit-action.mjs'), 'audit-action.mjs')
+  })
+
+  it('catalog entry stays lean and Node-free', () => {
     const source = readDist('catalog.mjs')
-    expect(source).not.toMatch(/node:(crypto|fs|path|module)/)
-    expect(source).not.toContain('pretty-error-snippet.node')
+    assertNoNodeBuiltins(source, 'catalog.mjs')
+    expect(source).toMatch(/from "\.\/audit-action\.mjs"/)
+
+    const graph = collectRelativeImports('catalog.mjs')
+    expect(graph).not.toContain('audit.mjs')
+    expect(graph.some(path => /^audit-/.test(path) && !path.startsWith('audit-action'))).toBe(false)
   })
 
-  it('index entry does not reference pretty-error-snippet.node', () => {
-    const source = readDist('index.mjs')
-    expect(source).not.toContain('pretty-error-snippet.node')
+  it('index entry does not pull pretty-error-snippet.node', () => {
+    assertNoNodeBuiltins(readDist('index.mjs'), 'index.mjs')
   })
 })
