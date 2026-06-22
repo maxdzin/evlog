@@ -1,4 +1,6 @@
 import type { RequestLogger } from '../types'
+import { registerPrettyErrorSnippetReader } from '../shared/pretty-error'
+import { readCodeSnippetFromDisk } from '../shared/pretty-error-snippet.node'
 import { createMiddlewareLogger, type BaseEvlogOptions } from '../shared/middleware'
 import { attachForkToLogger } from '../shared/fork'
 import { extractSafeHeaders } from '../shared/headers'
@@ -9,6 +11,8 @@ import { EvlogError } from '../error'
 const { storage, useLogger } = createLoggerStorage(
   'handle context. Make sure evlog() handle is added to your hooks.server.ts.',
 )
+
+registerPrettyErrorSnippetReader(readCodeSnippetFromDisk)
 
 export type EvlogSvelteKitOptions = BaseEvlogOptions
 

@@ -207,7 +207,9 @@ export function createInstrumentation(options: InstrumentationOptions = {}): Ins
         drain: options.drain,
       })
       lockLogger()
-      registerPrettyErrorSnippetReader(readCodeSnippetFromDisk)
+      if (process.env.NEXT_RUNTIME === 'nodejs') {
+        registerPrettyErrorSnippetReader(readCodeSnippetFromDisk)
+      }
 
       if (captureOutputOptions && process.env.NEXT_RUNTIME === 'nodejs') {
         applyCaptureOutput(captureOutputOptions, log, options.silent ?? false)
