@@ -1,7 +1,7 @@
 import * as aiModule from 'ai'
 import { gateway, wrapLanguageModel } from 'ai'
-import type { GatewayModelId } from 'ai'
-import type { LanguageModelV3, LanguageModelV3Middleware, LanguageModelV3StreamPart } from '@ai-sdk/provider'
+import type { LanguageModel, LanguageModelMiddleware } from 'ai'
+import type { LanguageModelV4StreamPart } from '@ai-sdk/provider'
 import type { RequestLogger } from '../types'
 
 const { bindTelemetryIntegration } = aiModule as {
@@ -194,22 +194,29 @@ export interface AILogger {
    * All `generateText` and `streamText` calls using the wrapped model
    * are captured automatically into the wide event.
    *
-   * Accepts a `LanguageModelV3` object or a model string (e.g. `'anthropic/claude-sonnet-4.6'`).
+   * Accepts a language model object (`LanguageModelV3` or `LanguageModelV4`)
+   * or a model string (e.g. `'anthropic/claude-sonnet-4.6'`).
    * Strings are resolved via the AI SDK gateway.
+   *
+   * On AI SDK v7, the wrapped model is a `LanguageModelV4`. On v6 it remains
+   * a `LanguageModelV3`. Both are accepted as input.
    *
    * Also works with pre-wrapped models (e.g. from supermemory, guardrails):
    * `ai.wrap(withSupermemory(base, orgId))` composes correctly.
    *
-   * @example
+   * @example Gateway model string
    * ```ts
    * const ai = createAILogger(log)
    * const model = ai.wrap('anthropic/claude-sonnet-4.6')
+   * ```
    *
-   * // Also accepts a model object
+   * @example Provider model object (V3 or V4)
+   * ```ts
+   * const ai = createAILogger(log)
    * const model = ai.wrap(anthropic('claude-sonnet-4.6'))
    * ```
    */
-  wrap: (model: LanguageModelV3 | GatewayModelId) => LanguageModelV3
+  wrap: (model: LanguageModel) => LanguageModel
 
   /**
    * Manually capture token usage from an `embed()` or `embedMany()` result.
@@ -390,7 +397,7 @@ function resolveProviderAndModel(provider: string, modelId: string): { provider:
  * })
  * ```
  */
-export function createAIMiddleware(log: RequestLogger, options?: AILoggerOptions): LanguageModelV3Middleware {
+export function createAIMiddleware(log: RequestLogger, options?: AILoggerOptions): LanguageModelMiddleware {
   return buildMiddleware(log, options)
 }
 
@@ -426,7 +433,7 @@ export function createAILogger(log: RequestLogger, options?: AILoggerOptions): A
   const middleware = buildMiddlewareFromState(log, state)
 
   return {
-    wrap: (model: LanguageModelV3 | GatewayModelId) => {
+    wrap: (model: LanguageModel) => {
       const resolved = typeof model === 'string' ? gateway(model) : model
       return wrapLanguageModel({ model: resolved, middleware })
     },
@@ -705,15 +712,17 @@ function recordError(log: RequestLogger, state: AccumulatorState, model: { provi
   flushState(log, state)
 }
 
-function buildMiddleware(log: RequestLogger, options?: AILoggerOptions): LanguageModelV3Middleware {
+function buildMiddleware(log: RequestLogger, options?: AILoggerOptions): LanguageModelMiddleware {
   const state = createAccumulatorState(options)
   state._log = log
   return buildMiddlewareFromState(log, state)
 }
 
-function buildMiddlewareFromState(log: RequestLogger, state: AccumulatorState): LanguageModelV3Middleware {
+function buildMiddlewareFromState(log: RequestLogger, state: AccumulatorState): LanguageModelMiddleware {
   return {
-    specificationVersion: 'v3',
+    // AI SDK v7 middleware is V4-native; `LanguageModelMiddleware` also
+    // accepts this on v6-compatible installs that relax the version field.
+    specificationVersion: 'v4',
     wrapGenerate: async ({ doGenerate, model }) => {
       try {
         const result = await doGenerate()
@@ -782,8 +791,8 @@ function buildMiddlewareFromState(log: RequestLogger, state: AccumulatorState): 
       const { stream, ...rest } = doStreamResult
 
       const transformStream = new TransformStream<
-        LanguageModelV3StreamPart,
-        LanguageModelV3StreamPart
+        LanguageModelV4StreamPart,
+        LanguageModelV4StreamPart
       >({
         transform(chunk, controller) {
           if (!firstChunkTime && chunk.type === 'text-delta') {
