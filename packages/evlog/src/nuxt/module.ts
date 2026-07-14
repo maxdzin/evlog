@@ -4,6 +4,7 @@ import {
   addServerHandler,
   addServerImports,
   addServerPlugin,
+  addTypeTemplate,
   addVitePlugin,
   createResolver,
   defineNuxtModule,
@@ -420,52 +421,77 @@ export default defineNuxtModule<ModuleOptions>({
       {
         name: 'log',
         from: resolver.resolve('../runtime/client/log'),
-        typeFrom: 'evlog/client',
+        dtsDisabled: true,
       },
       {
         name: 'setIdentity',
         from: resolver.resolve('../runtime/client/log'),
-        typeFrom: 'evlog/client',
+        dtsDisabled: true,
       },
       {
         name: 'clearIdentity',
         from: resolver.resolve('../runtime/client/log'),
-        typeFrom: 'evlog/client',
+        dtsDisabled: true,
       },
       {
         name: 'setMinLevel',
         from: resolver.resolve('../runtime/client/log'),
-        typeFrom: 'evlog/client',
+        dtsDisabled: true,
       },
       {
         name: 'createEvlogError',
         from: resolver.resolve('../error'),
-        typeFrom: 'evlog',
+        dtsDisabled: true,
       },
       {
         name: 'parseError',
         from: resolver.resolve('../runtime/utils/parseError'),
-        typeFrom: 'evlog',
+        dtsDisabled: true,
       },
     ])
+
+    addTypeTemplate({
+      filename: 'types/evlog-client.d.ts',
+      getContents: () => `declare global {
+  const log: typeof import('evlog/client').log
+  const setIdentity: typeof import('evlog/client').setIdentity
+  const clearIdentity: typeof import('evlog/client').clearIdentity
+  const setMinLevel: typeof import('evlog/client').setMinLevel
+  const createEvlogError: typeof import('evlog').createEvlogError
+  const parseError: typeof import('evlog').parseError
+}
+export {}
+`,
+    })
 
     addServerImports([
       {
         name: 'useLogger',
         from: resolver.resolve('../runtime/server/useLogger'),
-        typeFrom: 'evlog',
+        dtsDisabled: true,
       },
       {
         name: 'log',
         from: resolver.resolve('../logger'),
-        typeFrom: 'evlog',
+        dtsDisabled: true,
       },
       {
         name: 'createEvlogError',
         from: resolver.resolve('../error'),
-        typeFrom: 'evlog',
+        dtsDisabled: true,
       },
     ])
+
+    addTypeTemplate({
+      filename: 'types/evlog-server.d.ts',
+      getContents: () => `declare global {
+  const useLogger: typeof import('evlog').useLogger
+  const log: typeof import('evlog').log
+  const createEvlogError: typeof import('evlog').createEvlogError
+}
+export {}
+`,
+    }, { nitro: true })
 
     const stripLevels = options.strip ?? ['debug']
     if (stripLevels.length > 0) {
