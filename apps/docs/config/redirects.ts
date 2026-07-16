@@ -23,6 +23,7 @@ export const redirects: Record<string, RouteRedirect> = {
   '/enrichers': r('/use-cases/enrichers'),
   '/use-cases': r('/use-cases/overview'),
   '/use-cases/eve/overview': r('/use-cases/eve'),
+  '/use-cases/telemetry': r('/use-cases/telemetry/overview'),
 
   // Getting Started → Start + Reference
   '/getting-started/introduction': r('/start/introduction'),
