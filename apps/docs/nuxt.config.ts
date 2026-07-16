@@ -42,7 +42,7 @@ export default defineNuxtConfig({
       {
         name: 'Geist Pixel Line',
         src: '/fonts/GeistPixel-Line.woff2',
-        weights: [400],
+        weights: [400, 500],
         global: true,
       },
     ],
@@ -59,6 +59,13 @@ export default defineNuxtConfig({
     // Custom OgImageDocs.satori.vue has complex shadow/blur effects that slow Satori down.
     // 15s default makes some pages timeout during prerender, which means Vercel hits the
     // zero-runtime route at runtime and returns 500 ("Not supported in zeroRuntime mode").
+    defaults: {
+      // Satori cannot parse woff2 — keep woff2 in @nuxt/fonts for the browser, TTF here for OG images.
+      fonts: [
+        { name: 'Geist Pixel Line', weight: 400, path: '/fonts/GeistPixel-Line.ttf' },
+        { name: 'Geist Pixel Line', weight: 500, path: '/fonts/GeistPixel-Line.ttf' },
+      ],
+    },
     security: {
       renderTimeout: 60_000,
     },

@@ -185,6 +185,7 @@ function truncate(str: string, max: number) {
             <div
               aria-hidden="true"
               class="flex"
+              :class="{ 'font-pixel': usePixelTitle }"
               :style="{
                 ...titleStyleBloom,
                 position: 'absolute',
@@ -197,13 +198,14 @@ function truncate(str: string, max: number) {
             >
               {{ titleText }}
             </div>
-            <div class="flex" :style="titleStyleFront">
+            <div class="flex" :class="{ 'font-pixel': usePixelTitle }" :style="titleStyleFront">
               {{ titleText }}
             </div>
           </div>
           <div
             v-else
             class="flex max-w-[1000px]"
+            :class="{ 'font-pixel': usePixelTitle }"
             :style="titleStyleNoDuplicate"
           >
             {{ titleText }}
