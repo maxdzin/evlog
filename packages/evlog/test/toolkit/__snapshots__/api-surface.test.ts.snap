@@ -275,6 +275,9 @@ exports[`public API surface > matches snapshot for all subpath exports 1`] = `
     "toTypedAttributeValue",
     "withEvlogIdentityHeaders",
   ],
+  "./toolkit/storage": [
+    "createLoggerStorage",
+  ],
   "./vite": [
     "createAutoImportsPlugin",
     "createAutoInitPlugin",
